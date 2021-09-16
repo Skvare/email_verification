@@ -35,8 +35,33 @@ class UserVerificationForm extends FormBase {
       '#value' => $this->t('Submit'),
     ];
 
+    $form['actions']['#type'] = 'actions';
+    $form['actions']['submit'] = [
+      '#type' => 'submit',
+      '#value' => $this->t('Send Email'),
+      '#button_type' => 'primary',
+    ];
+    $form['actions']['reset'] = [
+      '#type' => 'submit',
+      '#value' => $this->t('Go Back'),
+      '#submit' => [[$this, 'goBack']],
+    ];
+
+
     return $form;
   }
+
+  /**
+   * Go back the form
+   *
+   * @param array $form
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   */
+  public function goBack(array &$form, FormStateInterface $form_state) {
+    $url = Url::fromRoute('user.login');
+    $form_state->setRedirectUrl($url);
+  }
+
 
   /**
    * {@inheritdoc}
@@ -57,7 +82,8 @@ class UserVerificationForm extends FormBase {
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
     $values = $form_state->getValues();
-    $email = $values['mail'];
+    $email = urlencode($values['mail']);
+
     $config = \Drupal::configFactory()->getEditable('email_verification.settings');
     $salt = $config->get('user_email_verification_salt') ?? 'email';
     $emailKey = md5($salt . $email);
@@ -66,11 +92,13 @@ class UserVerificationForm extends FormBase {
     // Get template.
     $msgTpl = $config->get('user_email_verification_tpl');
     // Prepare verification link.
-    $link = "{$base_url}/user/register?email={$email}&verify=" . $emailKey;
+    $email2 = urlencode($email);
+    $link = "{$base_url}/user/register?email={$email2}&verify=" . $emailKey;
     // Replace token.
     $token_service = \Drupal::service('token');
     $msgTpl = $token_service->replace($msgTpl,
       ['varifiedemail' => $email, 'emailverificationlink' => $link]);
+    $msgTpl = str_replace('&amp;', '&', $msgTpl);
     $module = 'email_verification';
     \Drupal::logger('email_verification')->notice(print_r($msgTpl, TRUE));
     // Send Email.
@@ -93,12 +121,16 @@ class UserVerificationForm extends FormBase {
         $this->t('There was a problem sending your email notification to @email.',
         ['@email' => $to]);
       \Drupal::logger('email_verification')->error($message);
+      $messenger = \Drupal::messenger();
+      $messenger->addMessage($message, $messenger::TYPE_ERROR);
 
       return;
     }
 
     $message = $this->t('An email notification has been sent to @email', ['@email' => $to]);
     \Drupal::logger('email_verification')->notice($message);
+    $messenger = \Drupal::messenger();
+    $messenger->addMessage($message, $messenger::TYPE_STATUS);
   }
 
 }
