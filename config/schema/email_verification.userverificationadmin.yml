@@ -1,0 +1,10 @@
+email_verification.settings:
+  type: config_object
+  label: 'Email Verification Settings'
+  mapping:
+    user_email_verification_salt:
+      type: text
+      label: 'Random key to generate verify email hash'
+    user_email_verification_tpl:
+      type: textarea
+      label: 'User Verification Email Template'

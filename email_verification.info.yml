@@ -1,0 +1,7 @@
+name: 'Email Verification'
+type: module
+description: 'Verify User Emails before registration'
+core: 8.x
+core_version_requirement: ^8 || ^9
+package: 'Custom'
+configure: email_verification.settings

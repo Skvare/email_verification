@@ -1,0 +1,14 @@
+email_verification.user_verification_form:
+  path: '/user/emailverify'
+  defaults:
+    _form: '\Drupal\email_verification\Form\UserVerificationForm'
+    _title: 'Email Verification'
+  requirements:
+    _user_is_logged_in: 'FALSE'
+email_verification.settings:
+  path: '/admin/config/people/userverify'
+  defaults:
+    _form: '\Drupal\email_verification\Form\UserVerificationAdminForm'
+    _title: 'Email Verification Settings'
+  requirements:
+    _permission: 'administer users'

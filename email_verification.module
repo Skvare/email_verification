@@ -1,0 +1,82 @@
+<?php
+
+/**
+ * @file
+ * Contains email_verification.module.
+ */
+
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Form\FormStateInterface;
+use Symfony\Component\HttpFoundation\RedirectResponse;
+use Drupal\Core\Url;
+use Drupal\Component\Utility\Html;
+
+/**
+ * Implements hook_help().
+ */
+function email_verification_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    // Main module help for the email_verification module.
+    case 'help.page.email_verification':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('Verify User Emails before registration') . '</p>';
+      return $output;
+
+    default:
+  }
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function email_verification_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  // If email verify flag absent in url then redirect it to user verification
+  // form.
+  $verify = \Drupal::request()->query->get('verify');
+  if ($form_id == 'user_register_form') {
+    if (empty($verify)) {
+      $targetUrl = Url::fromRoute('email_verification.user_verification_form')->toString();
+      $response = new RedirectResponse($targetUrl, 301);
+      $response->send();
+
+      return;
+    }
+    // Once md5 has present with actual email in url then compare it
+    // to make sure its same email address.
+    $email = \Drupal::request()->query->get('email');
+
+    $config = \Drupal::configFactory()->getEditable('email_verification.settings');
+    $salt = $config->get('user_email_verification_salt') ?? 'email';
+    $key = md5($salt . $email);
+    // If not same then redirect back to user verification screen.
+    if ($key == $verify) {
+      $form['account']['mail']['#default_value'] = $email;
+      // Set field to read only.
+      $form['account']['mail']['#attributes']['readonly'] = 'readonly';
+    }
+    else {
+      // Echo 'miss match'; exit;.
+      $targetUrl = Url::fromRoute('email_verification.user_verification_form')->toString();
+      $response = new RedirectResponse($targetUrl, 301);
+      $response->send();
+      exit;
+    }
+  }
+}
+
+/**
+ * Implements hook_mail().
+ */
+function email_verification_mail($key, &$message, $params) {
+  $options = [
+    'langcode' => $message['langcode'],
+  ];
+  switch ($key) {
+    case 'email_verification':
+      $message['from'] = \Drupal::config('system.site')->get('mail');
+      $message['subject'] = t('Your mail subject Here: @title', ['@title' => $params['title']], $options);
+      $message['body'][] = Html::escape($params['message']);
+      break;
+  }
+}

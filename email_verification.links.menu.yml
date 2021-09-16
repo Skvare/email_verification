@@ -1,0 +1,6 @@
+email_verification.list:
+  title: 'New User Email Verification'
+  description: 'Configure user verification message.'
+  route_name: email_verification.settings
+  weight: 11
+  parent: user.admin_index

@@ -1,0 +1,6 @@
+user_email_verification_tpl: 'Dear [user:varifiedemail],
+
+                             To register on [site:name], please click on [user:emailverificationlink] , this will ensure that your email address is valid.
+
+                             Thanks
+                             [site:name]'
