@@ -6,7 +6,6 @@ use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Component\Utility\Html;
 use Drupal\Core\Url;
-use Drupal\Core\Routing\RouteMatchInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 
 /**
@@ -27,13 +26,24 @@ class UserVerificationForm extends FormBase {
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state) {
+    $config = \Drupal::configFactory()->getEditable('email_verification.settings');
+    $helpText = $config->get('user_email_verification_helptext');
     $form['mail'] = [
       '#type' => 'email',
       '#title' => $this->t('E-mail address'),
-      '#description' => $this->t('Validate Email address before creating account'),
+      '#description' => $this->t('Validate Email address before creating account.'),
       '#weight' => '0',
+
     ];
 
+    if (!empty($helpText)) {
+      $form['info'] = [
+        '#type' => 'markup',
+        '#prefix' => '<p>',
+        '#markup' => $helpText,
+        '#suffix' => '</p>',
+      ];
+    }
     $form['actions']['#type'] = 'actions';
     $form['actions']['submit'] = [
       '#type' => 'submit',
@@ -45,25 +55,11 @@ class UserVerificationForm extends FormBase {
       '#type' => 'submit',
       '#name' => 'reset',
       '#value' => $this->t('Go Back'),
-      //'#submit' => [[$this, 'goBack']],
       '#limit_validation_errors' => [],
     ];
 
-
     return $form;
   }
-
-  /**
-   * Go back the form
-   *
-   * @param array $form
-   * @param \Drupal\Core\Form\FormStateInterface $form_state
-   */
-  public function goBack(array &$form, FormStateInterface $form_state) {
-    $url = Url::fromRoute('user.login');
-    $form_state->setRedirectUrl($url);
-  }
-
 
   /**
    * {@inheritdoc}
@@ -129,7 +125,6 @@ class UserVerificationForm extends FormBase {
     $send = TRUE;
     $params['message'] = $msgTpl;
     $params['title'] = $this->t('User Email Verification');
-    ;
     $params['from'] = \Drupal::config('system.site')->get('mail');
     $params['subject'] = $this->t('User Email Verification');
     $params['body'][] = Html::escape($params['message']);
@@ -138,7 +133,7 @@ class UserVerificationForm extends FormBase {
     if ($result['result'] != TRUE) {
       $message =
         $this->t('There was a problem sending your email notification to @email.',
-        ['@email' => $to]);
+          ['@email' => $to]);
       \Drupal::logger('email_verification')->error($message);
       $messenger = \Drupal::messenger();
       $messenger->addMessage($message, $messenger::TYPE_ERROR);
@@ -146,7 +141,7 @@ class UserVerificationForm extends FormBase {
       return;
     }
 
-    $message = $this->t('An email notification has been sent to @email', ['@email' => $to]);
+    $message = $this->t('We have sent an email for verification to @email', ['@email' => $to]);
     \Drupal::logger('email_verification')->notice($message);
     $messenger = \Drupal::messenger();
     $messenger->addMessage($message, $messenger::TYPE_STATUS);

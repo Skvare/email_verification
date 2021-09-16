@@ -8,3 +8,6 @@ email_verification.settings:
     user_email_verification_tpl:
       type: textarea
       label: 'User Verification Email Template'
+    user_email_verification_helptext:
+      type: textarea
+      label: 'User Verification Help Text'

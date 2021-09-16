@@ -50,6 +50,15 @@ class UserVerificationAdminForm extends ConfigFormBase {
       $this->t('Set custom message for user email verification with these [user:emailverificationlink], [user:varifiedemail] tokens.'),
     ];
 
+    $form['user_email_verification_helptext'] = [
+      '#type' => 'textarea',
+      '#title' => $this->t('User Verification Help text'),
+      '#weight' => '1',
+      '#default_value' => $config->get('user_email_verification_helptext'),
+      '#description' =>
+      $this->t('Set custom message on email verification form.'),
+    ];
+
     return parent::buildForm($form, $form_state);
   }
 
@@ -60,6 +69,7 @@ class UserVerificationAdminForm extends ConfigFormBase {
     \Drupal::configFactory()->getEditable('email_verification.settings')
       ->set('user_email_verification_salt', $form_state->getValue('user_email_verification_salt'))
       ->set('user_email_verification_tpl', $form_state->getValue('user_email_verification_tpl'))
+      ->set('user_email_verification_helptext', $form_state->getValue('user_email_verification_helptext'))
       ->save();
 
     return parent::submitForm($form, $form_state);
