@@ -5,6 +5,9 @@ namespace Drupal\email_verification\Form;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Component\Utility\Html;
+use Drupal\Core\Url;
+use Drupal\Core\Routing\RouteMatchInterface;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 
 /**
  * Class UserVerificationForm.
@@ -38,13 +41,16 @@ class UserVerificationForm extends FormBase {
     $form['actions']['#type'] = 'actions';
     $form['actions']['submit'] = [
       '#type' => 'submit',
+      '#name' => 'submit',
       '#value' => $this->t('Send Email'),
       '#button_type' => 'primary',
     ];
     $form['actions']['reset'] = [
       '#type' => 'submit',
+      '#name' => 'reset',
       '#value' => $this->t('Go Back'),
-      '#submit' => [[$this, 'goBack']],
+      //'#submit' => [[$this, 'goBack']],
+      '#limit_validation_errors' => [],
     ];
 
 
@@ -67,8 +73,19 @@ class UserVerificationForm extends FormBase {
    * {@inheritdoc}
    */
   public function validateForm(array &$form, FormStateInterface $form_state) {
-    foreach ($form_state->getValues() as $key => $value) {
-      if ($key == 'mail') {
+    $button_clicked = $form_state->getTriggeringElement()['#name'];
+    if ($button_clicked == 'reset') {
+      $targetUrl = Url::fromRoute('user.login')->toString();
+      $response = new RedirectResponse($targetUrl, 301);
+      $response->send();
+      exit;
+    }
+    $values = $form_state->getValues();
+    if (empty($values['mail'])) {
+      $form_state->setError($form['mail'], $this->t('Please provide email address.'));
+    }
+    foreach ($values as $key => $value) {
+      if ($key == 'mail' && !empty($value)) {
         if (!\Drupal::service('email.validator')->isValid($value)) {
           $form_state->setError($form['mail'], $this->t('Please provide valid email address.'));
         }
@@ -81,9 +98,15 @@ class UserVerificationForm extends FormBase {
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
+    $button_clicked = $form_state->getTriggeringElement()['#name'];
+    if ($button_clicked == 'reset') {
+      return;
+    }
     $values = $form_state->getValues();
-    $email = urlencode($values['mail']);
-
+    if (empty($values['mail'])) {
+      return;
+    }
+    $email = $values['mail'];
     $config = \Drupal::configFactory()->getEditable('email_verification.settings');
     $salt = $config->get('user_email_verification_salt') ?? 'email';
     $emailKey = md5($salt . $email);

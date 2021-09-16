@@ -47,7 +47,6 @@ function email_verification_form_alter(&$form, FormStateInterface $form_state, $
     // Once md5 has present with actual email in url then compare it
     // to make sure its same email address.
     $email = \Drupal::request()->query->get('email');
-    $email = urldecode($email);
     $config = \Drupal::configFactory()->getEditable('email_verification.settings');
     $salt = $config->get('user_email_verification_salt') ?? 'email';
     $key = md5($salt . $email);
