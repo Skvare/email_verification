@@ -33,10 +33,6 @@ class UserVerificationForm extends FormBase {
       '#description' => $this->t('Validate Email address before creating account'),
       '#weight' => '0',
     ];
-    $form['submit'] = [
-      '#type' => 'submit',
-      '#value' => $this->t('Submit'),
-    ];
 
     $form['actions']['#type'] = 'actions';
     $form['actions']['submit'] = [
