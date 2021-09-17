@@ -5,8 +5,16 @@ namespace Drupal\email_verification\Form;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Component\Utility\Html;
+use Drupal\Core\Mail\MailManagerInterface;
 use Drupal\Core\Url;
 use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use Egulias\EmailValidator\EmailValidator;
+use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Messenger\MessengerInterface;
+use Drupal\Core\Utility\Token;
+use Psr\Log\LoggerInterface;
+use Drupal\Core\Session\AccountInterface;
 
 /**
  * Class UserVerificationForm.
@@ -16,6 +24,55 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 class UserVerificationForm extends FormBase {
 
   /**
+   * Email validator.
+   *
+   * @var \Egulias\EmailValidator\EmailValidator
+   */
+  protected $emailValidator;
+
+  /**
+   * The token replacement instance.
+   *
+   * @var \Drupal\Core\Utility\Token
+   */
+  protected $token;
+
+  /**
+   * The mail manager.
+   *
+   * @var \Drupal\Core\Mail\MailManagerInterface
+   */
+  protected $mailManager;
+
+  /**
+   * The config factory.
+   *
+   * @var \Drupal\Core\Config\ConfigFactoryInterface
+   */
+  protected $configFactory;
+
+  /**
+   * The messenger instance.
+   *
+   * @var \Drupal\Core\Messenger\MessengerInterface
+   */
+  protected $messenger;
+
+  /**
+   * A logger instance.
+   *
+   * @var \Psr\Log\LoggerInterface
+   */
+  protected $logger;
+
+  /**
+   * An Account instance.
+   *
+   * @var \Drupal\Core\Session\AccountInterface
+   */
+  protected $account;
+
+  /**
    * {@inheritdoc}
    */
   public function getFormId() {
@@ -23,10 +80,60 @@ class UserVerificationForm extends FormBase {
   }
 
   /**
+   * Constructs a UserVerificationForm instance.
+   *
+   * @param \Drupal\Core\Config\ConfigFactoryInterface $configFactory
+   *   The config factory.
+   * @param \Egulias\EmailValidator\EmailValidator $emailValidator
+   *   The Email Validator service.
+   * @param \Drupal\Core\Utility\Token $token
+   *   The token replacement instance.
+   * @param \Drupal\Core\Mail\MailManagerInterface $mailManager
+   *   The Mail service.
+   * @param \Drupal\Core\Messenger\MessengerInterface $messenger
+   *   The Messenger Service.
+   * @param \Psr\Log\LoggerInterface $logger
+   *   A logger instance.
+   * @param \Drupal\Core\Session\AccountInterface $account
+   *   An Account instance.
+   */
+  public function __construct(ConfigFactoryInterface $configFactory,
+                              EmailValidator $emailValidator,
+                              Token $token,
+                              MailManagerInterface $mailManager,
+                              MessengerInterface $messenger,
+                              LoggerInterface $logger,
+                              AccountInterface $account
+  ) {
+    $this->configFactory = $configFactory;
+    $this->emailValidator = $emailValidator;
+    $this->token = $token;
+    $this->mailManager = $mailManager;
+    $this->messenger = $messenger;
+    $this->logger = $logger;
+    $this->account = $account;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container) {
+    return new static(
+      $container->get('config.factory'),
+      $container->get('email.validator'),
+      $container->get('token'),
+      $container->get('plugin.manager.mail'),
+      $container->get('messenger'),
+      $container->get('logger.channel.file'),
+      $container->get('current_user')
+    );
+  }
+
+  /**
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state) {
-    $config = \Drupal::configFactory()->getEditable('email_verification.settings');
+    $config = $this->configFactory->getEditable('email_verification.settings');
     $helpText = $config->get('user_email_verification_helptext.value');
     $form['mail'] = [
       '#type' => 'email',
@@ -78,7 +185,7 @@ class UserVerificationForm extends FormBase {
     }
     foreach ($values as $key => $value) {
       if ($key == 'mail' && !empty($value)) {
-        if (!\Drupal::service('email.validator')->isValid($value)) {
+        if (!$this->emailValidator->isValid($value)) {
           $form_state->setError($form['mail'], $this->t('Please provide valid email address.'));
         }
       }
@@ -99,10 +206,10 @@ class UserVerificationForm extends FormBase {
       return;
     }
     $email = $values['mail'];
-    $config = \Drupal::configFactory()->getEditable('email_verification.settings');
+    $config = $this->configFactory->getEditable('email_verification.settings');
     $salt = $config->get('user_email_verification_salt') ?? 'email';
     $emailKey = md5($salt . $email);
-    \Drupal::logger('email_verification-emailKey')->notice(print_r($emailKey, TRUE));
+    $this->logger->notice(print_r($emailKey, TRUE));
     global $base_url;
     // Get template.
     $msgTpl = $config->get('user_email_verification_tpl');
@@ -110,41 +217,38 @@ class UserVerificationForm extends FormBase {
     $email2 = urlencode($email);
     $link = "{$base_url}/user/register?email={$email2}&verify=" . $emailKey;
     // Replace token.
-    $token_service = \Drupal::service('token');
-    $msgTpl = $token_service->replace($msgTpl,
+    $msgTpl = $this->token->replace($msgTpl,
       ['varifiedemail' => $email, 'emailverificationlink' => $link]);
     $msgTpl = str_replace('&amp;', '&', $msgTpl);
     $module = 'email_verification';
-    \Drupal::logger('email_verification')->notice(print_r($msgTpl, TRUE));
+    $this->logger->notice(print_r($msgTpl, TRUE));
     // Send Email.
-    $mailManager = \Drupal::service('plugin.manager.mail');
     // Replace with Your key.
     $key = 'email_verification';
     $to = $email;
-    $langcode = \Drupal::currentUser()->getPreferredLangcode();
+    $langcode = $this->account->getPreferredLangcode();
     $send = TRUE;
     $params['message'] = $msgTpl;
     $params['title'] = $this->t('User Email Verification');
-    $params['from'] = \Drupal::config('system.site')->get('mail');
+    $params['from'] = $this->configFactory->get('system.site')->get('mail');
     $params['subject'] = $this->t('User Email Verification');
+    $this->logger->error('from :' .$params['from']);
     $params['body'][] = Html::escape($params['message']);
 
-    $result = $mailManager->mail($module, $key, $to, $langcode, $params, NULL, $send);
+    $result = $this->mailManager->mail($module, $key, $to, $langcode, $params, NULL, $send);
     if ($result['result'] != TRUE) {
       $message =
         $this->t('There was a problem sending your email notification to @email.',
           ['@email' => $to]);
-      \Drupal::logger('email_verification')->error($message);
-      $messenger = \Drupal::messenger();
-      $messenger->addMessage($message, $messenger::TYPE_ERROR);
+      $this->logger->error($message);
+      $this->messenger->addMessage($message, MessengerInterface::TYPE_ERROR);
 
       return;
     }
 
     $message = $this->t('We have sent an email for verification to @email', ['@email' => $to]);
-    \Drupal::logger('email_verification')->notice($message);
-    $messenger = \Drupal::messenger();
-    $messenger->addMessage($message, $messenger::TYPE_STATUS);
+    $this->logger->notice($message);
+    $this->messenger->addMessage($message, MessengerInterface::TYPE_STATUS);
   }
 
 }

@@ -4,6 +4,8 @@ namespace Drupal\email_verification\Form;
 
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Config\ConfigFactoryInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Class UserVerificationAdminForm.
@@ -11,6 +13,32 @@ use Drupal\Core\Form\FormStateInterface;
  * Admin setting form.
  */
 class UserVerificationAdminForm extends ConfigFormBase {
+
+  /**
+   * The config factory.
+   *
+   * @var \Drupal\Core\Config\ConfigFactoryInterface
+   */
+  protected $configFactory;
+
+  /**
+   * Constructs a UserVerificationAdminForm instance.
+   *
+   * @param \Drupal\Core\Config\ConfigFactoryInterface $configFactory
+   *   The config factory.
+   */
+  public function __construct(ConfigFactoryInterface $configFactory) {
+    $this->configFactory = $configFactory;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container) {
+    return new static(
+      $container->get('config.factory')
+    );
+  }
 
   /**
    * {@inheritdoc}
@@ -32,7 +60,7 @@ class UserVerificationAdminForm extends ConfigFormBase {
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state) {
-    $config = \Drupal::configFactory()->getEditable('email_verification.settings');
+    $config = $this->configFactory->getEditable('email_verification.settings');
     $form['user_email_verification_salt'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Random key to generate verify email hash'),
@@ -67,8 +95,9 @@ class UserVerificationAdminForm extends ConfigFormBase {
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
-    \Drupal::configFactory()->getEditable('email_verification.settings')
-      ->set('user_email_verification_salt', $form_state->getValue('user_email_verification_salt'))
+    $config = $this->configFactory->getEditable('email_verification.settings');
+
+    $config->set('user_email_verification_salt', $form_state->getValue('user_email_verification_salt'))
       ->set('user_email_verification_tpl', $form_state->getValue('user_email_verification_tpl'))
       ->set('user_email_verification_helptext', $form_state->getValue('user_email_verification_helptext'))
       ->save();
