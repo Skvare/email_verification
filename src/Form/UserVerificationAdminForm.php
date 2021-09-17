@@ -51,10 +51,11 @@ class UserVerificationAdminForm extends ConfigFormBase {
     ];
 
     $form['user_email_verification_helptext'] = [
-      '#type' => 'textarea',
+      '#type' => 'text_format',
       '#title' => $this->t('User Verification Help text'),
       '#weight' => '1',
-      '#default_value' => $config->get('user_email_verification_helptext'),
+      '#default_value' => $config->get('user_email_verification_helptext.value'),
+      '#format' => $config->get('user_email_verification_helptext.format'),
       '#description' =>
       $this->t('Set custom message on email verification form.'),
     ];

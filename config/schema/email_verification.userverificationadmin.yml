@@ -9,5 +9,5 @@ email_verification.settings:
       type: textarea
       label: 'User Verification Email Template'
     user_email_verification_helptext:
-      type: textarea
+      type: text_format
       label: 'User Verification Help Text'

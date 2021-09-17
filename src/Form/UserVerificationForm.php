@@ -27,7 +27,7 @@ class UserVerificationForm extends FormBase {
    */
   public function buildForm(array $form, FormStateInterface $form_state) {
     $config = \Drupal::configFactory()->getEditable('email_verification.settings');
-    $helpText = $config->get('user_email_verification_helptext');
+    $helpText = $config->get('user_email_verification_helptext.value');
     $form['mail'] = [
       '#type' => 'email',
       '#title' => $this->t('E-mail address'),
