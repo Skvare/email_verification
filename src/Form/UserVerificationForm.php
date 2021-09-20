@@ -13,7 +13,7 @@ use Egulias\EmailValidator\EmailValidator;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\Core\Utility\Token;
-use Psr\Log\LoggerInterface;
+use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\Session\AccountInterface;
 
 /**
@@ -61,7 +61,7 @@ class UserVerificationForm extends FormBase {
   /**
    * A logger instance.
    *
-   * @var \Psr\Log\LoggerInterface
+   * @var \Drupal\Core\Logger\LoggerChannelInterface
    */
   protected $logger;
 
@@ -92,7 +92,7 @@ class UserVerificationForm extends FormBase {
    *   The Mail service.
    * @param \Drupal\Core\Messenger\MessengerInterface $messenger
    *   The Messenger Service.
-   * @param \Psr\Log\LoggerInterface $logger
+   * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $loggerFactory
    *   A logger instance.
    * @param \Drupal\Core\Session\AccountInterface $account
    *   An Account instance.
@@ -102,7 +102,7 @@ class UserVerificationForm extends FormBase {
                               Token $token,
                               MailManagerInterface $mailManager,
                               MessengerInterface $messenger,
-                              LoggerInterface $logger,
+                              LoggerChannelFactoryInterface $loggerFactory,
                               AccountInterface $account
   ) {
     $this->configFactory = $configFactory;
@@ -110,7 +110,7 @@ class UserVerificationForm extends FormBase {
     $this->token = $token;
     $this->mailManager = $mailManager;
     $this->messenger = $messenger;
-    $this->logger = $logger;
+    $this->logger = $loggerFactory->get('email_verification');
     $this->account = $account;
   }
 
@@ -124,9 +124,10 @@ class UserVerificationForm extends FormBase {
       $container->get('token'),
       $container->get('plugin.manager.mail'),
       $container->get('messenger'),
-      $container->get('logger.channel.file'),
+      $container->get('logger.factory'),
       $container->get('current_user')
     );
+    // https://www.drupal.org/docs/8/api/logging-api/overview
   }
 
   /**
@@ -209,20 +210,19 @@ class UserVerificationForm extends FormBase {
     $config = $this->configFactory->getEditable('email_verification.settings');
     $salt = $config->get('user_email_verification_salt') ?? 'email';
     $emailKey = md5($salt . $email);
-    $this->logger->notice(print_r($emailKey, TRUE));
     global $base_url;
     // Get template.
     $msgTpl = $config->get('user_email_verification_tpl');
     // Prepare verification link.
     $email2 = urlencode($email);
     $registerUrl = Url::fromRoute('user.register')->toString();
-    $link = "{$base_url}/{$registerUrl}?email={$email2}&verify=" . $emailKey;
+    $link = "{$base_url}{$registerUrl}?email={$email2}&verify=" . $emailKey;
     // Replace token.
     $msgTpl = $this->token->replace($msgTpl,
       ['varifiedemail' => $email, 'emailverificationlink' => $link]);
     $msgTpl = str_replace('&amp;', '&', $msgTpl);
     $module = 'email_verification';
-    $this->logger->notice(print_r($msgTpl, TRUE));
+    $this->logger->info(print_r($msgTpl, TRUE));
     // Send Email.
     // Replace with Your key.
     $key = 'email_verification';
@@ -233,7 +233,7 @@ class UserVerificationForm extends FormBase {
     $params['title'] = $this->t('User Email Verification');
     $params['from'] = $this->configFactory->get('system.site')->get('mail');
     $params['subject'] = $this->t('User Email Verification');
-    $this->logger->error('from :' .$params['from']);
+    $this->logger->info('To :' . $to);
     $params['body'][] = Html::escape($params['message']);
 
     $result = $this->mailManager->mail($module, $key, $to, $langcode, $params, NULL, $send);
@@ -248,7 +248,7 @@ class UserVerificationForm extends FormBase {
     }
 
     $message = $this->t('We have sent an email for verification to @email', ['@email' => $to]);
-    $this->logger->notice($message);
+    $this->logger->info($message);
     $this->messenger->addMessage($message, MessengerInterface::TYPE_STATUS);
   }
 

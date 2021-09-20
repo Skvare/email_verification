@@ -34,6 +34,10 @@ function email_verification_form_alter(&$form, FormStateInterface $form_state, $
   // If email verify flag absent in url then redirect it to user verification
   // form.
   if ($form_id == 'user_register_form') {
+    // Only work for Anonymous users.
+    if (!\Drupal::currentUser()->isAnonymous()) {
+      return;
+    }
     $form['#cache'] = ['max-age' => 0];
     $verify = \Drupal::request()->query->get('verify');
     if (empty($verify)) {
