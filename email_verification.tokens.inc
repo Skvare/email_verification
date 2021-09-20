@@ -19,7 +19,7 @@ function email_verification_token_info() {
     'name' => t("Email Verification link"),
     'description' => t("Email Verification link"),
   ];
-  $user_email_verification['varifiedemail'] = [
+  $user_email_verification['emailtoverify'] = [
     'name' => t("Email Address"),
     'description' => t("Email Address"),
   ];
@@ -45,7 +45,7 @@ function email_verification_tokens($type,
           $replacements[$original] = $data[$name];
           break;
 
-        case 'varifiedemail':
+        case 'emailtoverify':
           $replacements[$original] = $data[$name];
           break;
       }

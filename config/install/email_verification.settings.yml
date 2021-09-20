@@ -1,0 +1,10 @@
+user_email_verification_tpl: 'Dear [user:emailtoverify],
+
+
+You may now create an account by clicking this link or copying and pasting it into your browser:
+
+
+[user:emailverificationlink]
+
+
+--  [site:name] team'

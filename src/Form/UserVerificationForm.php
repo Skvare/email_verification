@@ -219,7 +219,7 @@ class UserVerificationForm extends FormBase {
     $link = "{$base_url}{$registerUrl}?email={$email2}&verify=" . $emailKey;
     // Replace token.
     $msgTpl = $this->token->replace($msgTpl,
-      ['varifiedemail' => $email, 'emailverificationlink' => $link]);
+      ['emailtoverify' => $email, 'emailverificationlink' => $link]);
     $msgTpl = str_replace('&amp;', '&', $msgTpl);
     $module = 'email_verification';
     $this->logger->info(print_r($msgTpl, TRUE));

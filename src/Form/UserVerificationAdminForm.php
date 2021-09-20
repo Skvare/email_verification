@@ -67,25 +67,29 @@ class UserVerificationAdminForm extends ConfigFormBase {
       '#maxlength' => 64,
       '#size' => 64,
       '#weight' => '0',
+      '#required' => TRUE,
       '#default_value' => $config->get('user_email_verification_salt'),
+      '#description' =>
+      $this->t('Set a random alphanumeric string up to 32 characters.'),
     ];
     $form['user_email_verification_tpl'] = [
       '#type' => 'textarea',
       '#title' => $this->t('User Verification Email Template'),
       '#weight' => '1',
+      '#required' => TRUE,
       '#default_value' => $config->get('user_email_verification_tpl'),
       '#description' =>
-      $this->t('Set custom message for user email verification with these [user:emailverificationlink], [user:varifiedemail] tokens.'),
+      $this->t('Set a custom message for user email verification with these [user:emailverificationlink], [user:emailtoverify] tokens.'),
     ];
 
     $form['user_email_verification_helptext'] = [
       '#type' => 'text_format',
-      '#title' => $this->t('User Verification Help text'),
+      '#title' => $this->t('User Verification Help Text'),
       '#weight' => '1',
       '#default_value' => $config->get('user_email_verification_helptext.value'),
       '#format' => $config->get('user_email_verification_helptext.format'),
       '#description' =>
-      $this->t('Set custom message on email verification form.'),
+      $this->t('Set a custom message on email verification form.'),
     ];
 
     return parent::buildForm($form, $form_state);

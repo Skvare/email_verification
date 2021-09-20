@@ -41,7 +41,6 @@ function email_verification_form_alter(&$form, FormStateInterface $form_state, $
     $form['#cache'] = ['max-age' => 0];
     $verify = \Drupal::request()->query->get('verify');
     if (empty($verify)) {
-      \Drupal::logger('email_verification')->notice('redirect 1');
       $targetUrl = Url::fromRoute('email_verification.user_verification_form')->toString();
       $response = new RedirectResponse($targetUrl, 301);
       $response->send();
@@ -61,7 +60,6 @@ function email_verification_form_alter(&$form, FormStateInterface $form_state, $
       $form['account']['mail']['#attributes']['readonly'] = 'readonly';
     }
     else {
-      \Drupal::logger('email_verification')->notice('redirect 2');
       $targetUrl = Url::fromRoute('email_verification.user_verification_form')->toString();
       $response = new RedirectResponse($targetUrl, 301);
       $response->send();
