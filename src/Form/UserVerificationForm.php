@@ -215,7 +215,8 @@ class UserVerificationForm extends FormBase {
     $msgTpl = $config->get('user_email_verification_tpl');
     // Prepare verification link.
     $email2 = urlencode($email);
-    $link = "{$base_url}/user/register?email={$email2}&verify=" . $emailKey;
+    $registerUrl = Url::fromRoute('user.register')->toString();
+    $link = "{$base_url}/{$registerUrl}?email={$email2}&verify=" . $emailKey;
     // Replace token.
     $msgTpl = $this->token->replace($msgTpl,
       ['varifiedemail' => $email, 'emailverificationlink' => $link]);
